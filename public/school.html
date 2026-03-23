@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Заявки</title>
+<style>
+body { font-family: Arial; padding:20px; }
+button { margin:5px; }
+</style>
+</head>
+<body>
+
+<h2>Заявки школы</h2>
+
+<form id="form">
+<select name="system_type">
+  <option>ПС</option>
+  <option>СОУЭ</option>
+  <option>СКУД</option>
+  <option>Видео</option>
+</select>
+<br><br>
+<textarea name="description" placeholder="Описание"></textarea>
+<br><br>
+<input type="file" name="photo">
+<br><br>
+<button type="submit">Создать</button>
+</form>
+
+<hr>
+<div id="list"></div>
+
+<script>
+const school_id = new URLSearchParams(window.location.search).get("school");
+
+async function load(){
+  const res = await fetch("/api/requests/"+school_id);
+  const data = await res.json();
+  document.getElementById("list").innerHTML = data.map(r=>`
+    <div>
+      <b>${r.system_type}</b> - ${r.description} 
+      <br>Status: ${r.status}
+      <br>
+      ${r.photo ? `<img src="/uploads/${r.photo}" width="100">` : ""}
+      <br>
+      <button onclick="setStatus(${r.id}, 'В работе')">В работе</button>
+      <button onclick="setStatus(${r.id}, 'Выполнено')">Выполнено</button>
+      <button onclick="setStatus(${r.id}, 'Архив')">Архив</button>
+      <hr>
+    </div>
+  `).join("");
+}
+
+async function setStatus(id, status){
+  await fetch("/api/status/"+id,{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({status})
+  });
+  load();
+}
+
+document.getElementById("form").onsubmit = async (e)=>{
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  formData.append("school_id", school_id);
+  await fetch("/api/requests",{ method:"POST", body:formData });
+  e.target.reset();
+  load();
+}
+
+load();
+</script>
+
+</body>
+</html>

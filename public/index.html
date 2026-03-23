@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Школы</title>
+<style>
+body { font-family: Arial; padding:20px; }
+.card { padding:20px; margin:10px 0; background:#f0f0f0; cursor:pointer; }
+</style>
+</head>
+<body>
+<h2>Выберите школу</h2>
+
+<div class="card" onclick="openSchool(1)">Школа 1</div>
+<div class="card" onclick="openSchool(2)">Школа 2</div>
+<div class="card" onclick="openSchool(3)">Школа 3</div>
+<div class="card" onclick="openSchool(4)">Школа 4</div>
+
+<script>
+function openSchool(id){
+  window.location = "/school.html?school=" + id;
+}
+</script>
+</body>
+</html>
