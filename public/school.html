@@ -26,7 +26,14 @@ button { margin:5px; }
 <br><br>
 <button type="submit">Создать</button>
 </form>
-
+<label>Фильтр:</label>
+<select id="statusFilter" onchange="load()">
+  <option value="all">Все</option>
+  <option value="Новая">Новая</option>
+  <option value="В работе">В работе</option>
+  <option value="Выполнено">Выполнено</option>
+  <option value="Архив">Архив</option>
+</select>
 <hr>
 <div id="list"></div>
 
@@ -35,9 +42,20 @@ const school_id = new URLSearchParams(window.location.search).get("school");
 
 async function load(){
   const res = await fetch("/api/requests/"+school_id);
-  const data = await res.json();
+  let data = await res.json();
+
+  const filter = document.getElementById("statusFilter").value;
+
+  // фильтрация
+  if (filter !== "all") {
+    data = data.filter(r => r.status === filter);
+  } else {
+    // по умолчанию скрываем архив
+    data = data.filter(r => r.status !== "Архив");
+  }
+
   document.getElementById("list").innerHTML = data.map(r=>`
-    <div>
+    <div style="margin-bottom:15px; padding:10px; border:1px solid #ccc;">
       <b>${r.system_type}</b> - ${r.description} 
       <br>Status: ${r.status}
       <br>
@@ -46,7 +64,6 @@ async function load(){
       <button onclick="setStatus(${r.id}, 'В работе')">В работе</button>
       <button onclick="setStatus(${r.id}, 'Выполнено')">Выполнено</button>
       <button onclick="setStatus(${r.id}, 'Архив')">Архив</button>
-      <hr>
     </div>
   `).join("");
 }
