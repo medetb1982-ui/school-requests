@@ -3,15 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <title>Заявки</title>
+
 <style>
 body { font-family: Arial; padding:20px; }
-button { margin:5px; }
+
+h2 {
+  margin-bottom: 10px;
+}
+
+select, textarea, button, input {
+  margin:5px 0;
+  padding:5px;
+}
+
+.card {
+  margin-bottom:15px;
+  padding:10px;
+  border:1px solid #ccc;
+  border-radius:8px;
+}
+
+img {
+  margin-top:5px;
+  border-radius:5px;
+}
 </style>
+
 </head>
 <body>
 
-<h2>Заявки школы</h2>
+<h2 id="title">Заявки</h2>
 
+<!-- Форма -->
 <form id="form">
 <select name="system_type">
   <option>ПС</option>
@@ -19,13 +42,17 @@ button { margin:5px; }
   <option>СКУД</option>
   <option>Видео</option>
 </select>
-<br><br>
+<br>
 <textarea name="description" placeholder="Описание"></textarea>
-<br><br>
+<br>
 <input type="file" name="photo">
-<br><br>
+<br>
 <button type="submit">Создать</button>
 </form>
+
+<hr>
+
+<!-- Фильтр -->
 <label>Фильтр:</label>
 <select id="statusFilter" onchange="load()">
   <option value="all">Все</option>
@@ -34,32 +61,46 @@ button { margin:5px; }
   <option value="Выполнено">Выполнено</option>
   <option value="Архив">Архив</option>
 </select>
+
 <hr>
+
+<!-- Список -->
 <div id="list"></div>
 
 <script>
 const school_id = new URLSearchParams(window.location.search).get("school");
 
+// Названия школ
+const schoolNames = {
+  1: "Бином Бокейхана (Жагалау)",
+  2: "Бином Алтынсарина (Зам зам)",
+  3: "Бином Кекильбаева (Делюкс)",
+  4: "Бином Байтурсынова"
+};
+
+// Устанавливаем заголовок
+document.getElementById("title").innerText = "Заявки: " + schoolNames[school_id];
+
+// Загрузка заявок
 async function load(){
   const res = await fetch("/api/requests/"+school_id);
   let data = await res.json();
 
   const filter = document.getElementById("statusFilter").value;
 
-  // фильтрация
   if (filter !== "all") {
     data = data.filter(r => r.status === filter);
   } else {
-    // по умолчанию скрываем архив
+    // скрываем архив по умолчанию
     data = data.filter(r => r.status !== "Архив");
   }
 
   document.getElementById("list").innerHTML = data.map(r=>`
-    <div style="margin-bottom:15px; padding:10px; border:1px solid #ccc;">
-      <b>${r.system_type}</b> - ${r.description} 
-      <br>Status: ${r.status}
+    <div class="card">
+      <b>${r.system_type}</b> - ${r.description}
+      <br>Status: <b>${r.status}</b>
       <br>
-      ${r.photo ? `<img src="/uploads/${r.photo}" width="100">` : ""}
+      ${r.photo ? `<img src="/uploads/${r.photo}" width="120">` : ""}
       <br>
       <button onclick="setStatus(${r.id}, 'В работе')">В работе</button>
       <button onclick="setStatus(${r.id}, 'Выполнено')">Выполнено</button>
@@ -68,6 +109,7 @@ async function load(){
   `).join("");
 }
 
+// Изменение статуса
 async function setStatus(id, status){
   await fetch("/api/status/"+id,{
     method:"PUT",
@@ -77,11 +119,17 @@ async function setStatus(id, status){
   load();
 }
 
+// Отправка формы
 document.getElementById("form").onsubmit = async (e)=>{
   e.preventDefault();
   const formData = new FormData(e.target);
   formData.append("school_id", school_id);
-  await fetch("/api/requests",{ method:"POST", body:formData });
+
+  await fetch("/api/requests",{
+    method:"POST",
+    body:formData
+  });
+
   e.target.reset();
   load();
 }
