@@ -78,4 +78,27 @@ app.put("/api/status/:id", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Удалить заявку (только если Архив)
+app.delete("/api/requests/:id", (req, res) => {
+  const id = req.params.id;
+
+  db.get(`SELECT status FROM requests WHERE id = ?`, [id], (err, row) => {
+    if (err) return res.status(500).json(err);
+
+    if (!row) {
+      return res.status(404).json({ error: "Не найдено" });
+    }
+
+    if (row.status !== "Архив") {
+      return res.status(400).json({ error: "Можно удалить только архивные заявки" });
+    }
+
+    db.run(`DELETE FROM requests WHERE id = ?`, [id], function(err) {
+      if (err) return res.status(500).json(err);
+      res.json({ success: true });
+    });
+  });
+});
+
 app.listen(PORT, () => console.log("Server started on port " + PORT));

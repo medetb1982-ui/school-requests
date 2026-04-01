@@ -7,11 +7,37 @@
 <style>
 body { font-family: Arial; padding:20px; }
 
+.systems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.systems input[type="radio"] {
+  display: none;
+}
+
+.systems span {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #f0f0f0;
+}
+
+.systems input[type="radio"]:checked + span {
+  background: #007bff;
+  color: white;
+}
+
+.systems label {
+  cursor: pointer;
+}
+
 h2 {
   margin-bottom: 10px;
 }
 
-select, textarea, button, input {
+textarea, button, input {
   margin:5px 0;
   padding:5px;
 }
@@ -36,18 +62,22 @@ img {
 
 <!-- Форма -->
 <form id="form">
-<select name="system_type">
-  <option>ПС</option>
-  <option>СОУЭ</option>
-  <option>СКУД</option>
-  <option>Видео</option>
-</select>
-<br>
+
+<div class="systems">
+  <label><input type="radio" name="system_type" value="🔥 ПС" checked><span>🔥 ПС</span></label>
+  <label><input type="radio" name="system_type" value="🔊 СОУЭ"><span>🔊 СОУЭ</span></label>
+  <label><input type="radio" name="system_type" value="🔐 СКУД"><span>🔐 СКУД</span></label>
+  <label><input type="radio" name="system_type" value="🎥 Видео"><span>🎥 Видео</span></label>
+  <label><input type="radio" name="system_type" value="🕒 Часофикация"><span>🕒 Часофикация</span></label>
+  <label><input type="radio" name="system_type" value="📦 Разное"><span>📦 Разное</span></label>
+</div>
+
 <textarea name="description" placeholder="Описание"></textarea>
 <br>
 <input type="file" name="photo">
 <br>
 <button type="submit">Создать</button>
+
 </form>
 
 <hr>
@@ -70,7 +100,6 @@ img {
 <script>
 const school_id = new URLSearchParams(window.location.search).get("school");
 
-// Названия школ
 const schoolNames = {
   1: "Бином Бокейхана (Жагалау)",
   2: "Бином Алтынсарина (Зам зам)",
@@ -78,10 +107,8 @@ const schoolNames = {
   4: "Бином Байтурсынова"
 };
 
-// Устанавливаем заголовок
 document.getElementById("title").innerText = "Заявки: " + schoolNames[school_id];
 
-// Загрузка заявок
 async function load(){
   const res = await fetch("/api/requests/"+school_id);
   let data = await res.json();
@@ -91,26 +118,25 @@ async function load(){
   if (filter !== "all") {
     data = data.filter(r => r.status === filter);
   } else {
-    // скрываем архив по умолчанию
     data = data.filter(r => r.status !== "Архив");
   }
 
   document.getElementById("list").innerHTML = data.map(r=>`
-    <div class="card">
+    <div class="card" style="background:${getColor(r.status)};">
       <b>${r.system_type}</b> - ${r.description}
-	  <br><small>${formatDate(r.created_at)}</small>
-	  <br>Status: <b>${r.status}</b>
+      <br><small>${formatDate(r.created_at)}</small>
+      <br>Status: <b>${r.status}</b>
       <br>
       ${r.photo ? `<img src="/uploads/${r.photo}" width="120">` : ""}
       <br>
       <button onclick="setStatus(${r.id}, 'В работе')">В работе</button>
       <button onclick="setStatus(${r.id}, 'Выполнено')">Выполнено</button>
       <button onclick="setStatus(${r.id}, 'Архив')">Архив</button>
+      ${r.status === "Архив" ? `<button onclick="deleteRequest(${r.id})">Удалить</button>` : ""}
     </div>
   `).join("");
 }
 
-// Изменение статуса
 async function setStatus(id, status){
   await fetch("/api/status/"+id,{
     method:"PUT",
@@ -120,7 +146,6 @@ async function setStatus(id, status){
   load();
 }
 
-// Отправка формы
 document.getElementById("form").onsubmit = async (e)=>{
   e.preventDefault();
   const formData = new FormData(e.target);
@@ -135,6 +160,26 @@ document.getElementById("form").onsubmit = async (e)=>{
   load();
 }
 
+async function deleteRequest(id){
+  if (!confirm("Удалить заявку?")) return;
+
+  await fetch("/api/requests/" + id, {
+    method: "DELETE"
+  });
+
+  load();
+}
+
+function getColor(status){
+  switch(status){
+    case "Новая": return "#f0f0f0";
+    case "В работе": return "#fff3cd";
+    case "Выполнено": return "#d4edda";
+    case "Архив": return "#e0e0e0";
+    default: return "#ffffff";
+  }
+}
+
 function formatDate(dateString){
   const date = new Date(dateString);
 
@@ -146,6 +191,7 @@ function formatDate(dateString){
     minute: "2-digit"
   });
 }
+
 load();
 </script>
 
