@@ -1,43 +1,42 @@
 const express = require("express");
-const multer = require("multer");
 const sqlite3 = require("sqlite3").verbose();
-const path = require("path");
-const fs = require("fs");
+const multer = require("multer");
+const cors = require("cors");
 
 const app = express();
+const db = new sqlite3.Database("./database.db");
+
+app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 app.use("/uploads", express.static("uploads"));
 
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
-}
+const upload = multer({ dest: "uploads/" });
 
-const db = new sqlite3.Database("./database.db");
+// таблица заявок
+db.run(`
+  CREATE TABLE IF NOT EXISTS requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    school_id INTEGER,
+    system_type TEXT,
+    description TEXT,
+    photo TEXT,
+    status TEXT DEFAULT 'Новая',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      school_id INTEGER,
-      system_type TEXT,
-      description TEXT,
-      photo TEXT,
-      status TEXT DEFAULT 'Новая',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-});
+// таблица комментариев
+db.run(`
+  CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER,
+    text TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
-const storage = multer.diskStorage({
-  destination: "./uploads",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
-const upload = multer({ storage });
-
-// Создать заявку
+// создать заявку
 app.post("/api/requests", upload.single("photo"), (req, res) => {
   const { school_id, system_type, description } = req.body;
   const photo = req.file ? req.file.filename : null;
@@ -47,12 +46,12 @@ app.post("/api/requests", upload.single("photo"), (req, res) => {
     [school_id, system_type, description, photo],
     function (err) {
       if (err) return res.status(500).json(err);
-      res.json({ success: true });
+      res.json({ id: this.lastID });
     }
   );
 });
 
-// Получить заявки школы
+// получить заявки
 app.get("/api/requests/:school_id", (req, res) => {
   db.all(
     `SELECT * FROM requests WHERE school_id = ? ORDER BY created_at DESC`,
@@ -64,9 +63,10 @@ app.get("/api/requests/:school_id", (req, res) => {
   );
 });
 
-// Изменить статус
+// смена статуса
 app.put("/api/status/:id", (req, res) => {
   const { status } = req.body;
+
   db.run(
     `UPDATE requests SET status = ? WHERE id = ?`,
     [status, req.params.id],
@@ -77,28 +77,46 @@ app.put("/api/status/:id", (req, res) => {
   );
 });
 
-const PORT = process.env.PORT || 3000;
-
-// Удалить заявку (только если Архив)
+// удалить заявку (только архив)
 app.delete("/api/requests/:id", (req, res) => {
   const id = req.params.id;
 
   db.get(`SELECT status FROM requests WHERE id = ?`, [id], (err, row) => {
-    if (err) return res.status(500).json(err);
-
-    if (!row) {
-      return res.status(404).json({ error: "Не найдено" });
+    if (!row || row.status !== "Архив") {
+      return res.status(400).json({ error: "Можно удалить только архив" });
     }
 
-    if (row.status !== "Архив") {
-      return res.status(400).json({ error: "Можно удалить только архивные заявки" });
-    }
-
-    db.run(`DELETE FROM requests WHERE id = ?`, [id], function(err) {
+    db.run(`DELETE FROM requests WHERE id = ?`, [id], function (err) {
       if (err) return res.status(500).json(err);
       res.json({ success: true });
     });
   });
 });
 
-app.listen(PORT, () => console.log("Server started on port " + PORT));
+// получить комментарии
+app.get("/api/comments/:request_id", (req, res) => {
+  db.all(
+    `SELECT * FROM comments WHERE request_id = ? ORDER BY created_at ASC`,
+    [req.params.request_id],
+    (err, rows) => {
+      if (err) return res.status(500).json(err);
+      res.json(rows);
+    }
+  );
+});
+
+// добавить комментарий
+app.post("/api/comments", (req, res) => {
+  const { request_id, text } = req.body;
+
+  db.run(
+    `INSERT INTO comments (request_id, text) VALUES (?, ?)`,
+    [request_id, text],
+    function (err) {
+      if (err) return res.status(500).json(err);
+      res.json({ success: true });
+    }
+  );
+});
+
+app.listen(3000, () => console.log("Server started on port 3000"));

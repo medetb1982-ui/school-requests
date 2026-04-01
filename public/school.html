@@ -14,9 +14,7 @@ body { font-family: Arial; padding:20px; }
   margin-bottom: 10px;
 }
 
-.systems input[type="radio"] {
-  display: none;
-}
+.systems input { display: none; }
 
 .systems span {
   padding: 6px 10px;
@@ -24,22 +22,9 @@ body { font-family: Arial; padding:20px; }
   background: #f0f0f0;
 }
 
-.systems input[type="radio"]:checked + span {
+.systems input:checked + span {
   background: #007bff;
   color: white;
-}
-
-.systems label {
-  cursor: pointer;
-}
-
-h2 {
-  margin-bottom: 10px;
-}
-
-textarea, button, input {
-  margin:5px 0;
-  padding:5px;
 }
 
 .card {
@@ -49,41 +34,30 @@ textarea, button, input {
   border-radius:8px;
 }
 
-img {
-  margin-top:5px;
-  border-radius:5px;
-}
 </style>
-
 </head>
+
 <body>
 
-<h2 id="title">Заявки</h2>
+<h2 id="title"></h2>
 
-<!-- Форма -->
 <form id="form">
-
 <div class="systems">
-  <label><input type="radio" name="system_type" value="🔥 ПС" checked><span>🔥 ПС</span></label>
-  <label><input type="radio" name="system_type" value="🔊 СОУЭ"><span>🔊 СОУЭ</span></label>
-  <label><input type="radio" name="system_type" value="🔐 СКУД"><span>🔐 СКУД</span></label>
-  <label><input type="radio" name="system_type" value="🎥 Видео"><span>🎥 Видео</span></label>
-  <label><input type="radio" name="system_type" value="🕒 Часофикация"><span>🕒 Часофикация</span></label>
-  <label><input type="radio" name="system_type" value="📦 Разное"><span>📦 Разное</span></label>
+  <label><input type="radio" name="system_type" value="ПС" checked><span>🔥 ПС</span></label>
+  <label><input type="radio" name="system_type" value="СОУЭ"><span>🔊 СОУЭ</span></label>
+  <label><input type="radio" name="system_type" value="СКУД"><span>🔐 СКУД</span></label>
+  <label><input type="radio" name="system_type" value="Видео"><span>🎥 Видео</span></label>
+  <label><input type="radio" name="system_type" value="Часофикация"><span>🕒 Часофикация</span></label>
+  <label><input type="radio" name="system_type" value="Разное"><span>📦 Разное</span></label>
 </div>
 
-<textarea name="description" placeholder="Описание"></textarea>
-<br>
-<input type="file" name="photo">
-<br>
+<textarea name="description" placeholder="Описание"></textarea><br>
+<input type="file" name="photo"><br>
 <button type="submit">Создать</button>
-
 </form>
 
 <hr>
 
-<!-- Фильтр -->
-<label>Фильтр:</label>
 <select id="statusFilter" onchange="load()">
   <option value="all">Все</option>
   <option value="Новая">Новая</option>
@@ -94,50 +68,63 @@ img {
 
 <hr>
 
-<!-- Список -->
 <div id="list"></div>
 
 <script>
-const school_id = new URLSearchParams(window.location.search).get("school");
+const school_id = new URLSearchParams(location.search).get("school");
 
-const schoolNames = {
-  1: "Бином Бокейхана (Жагалау)",
-  2: "Бином Алтынсарина (Зам зам)",
-  3: "Бином Кекильбаева (Делюкс)",
-  4: "Бином Байтурсынова"
+const names = {
+  1:"Бином Бокейхана",
+  2:"Бином Алтынсарина",
+  3:"Бином Кекильбаева",
+  4:"Бином Байтурсынова"
 };
 
-document.getElementById("title").innerText = "Заявки: " + schoolNames[school_id];
+title.innerText = names[school_id];
 
-async function load(){
-  const res = await fetch("/api/requests/"+school_id);
-  let data = await res.json();
-
-  const filter = document.getElementById("statusFilter").value;
-
-  if (filter !== "all") {
-    data = data.filter(r => r.status === filter);
-  } else {
-    data = data.filter(r => r.status !== "Архив");
-  }
-
-  document.getElementById("list").innerHTML = data.map(r=>`
-    <div class="card" style="background:${getColor(r.status)};">
-      <b>${r.system_type}</b> - ${r.description}
-      <br><small>${formatDate(r.created_at)}</small>
-      <br>Status: <b>${r.status}</b>
-      <br>
-      ${r.photo ? `<img src="/uploads/${r.photo}" width="120">` : ""}
-      <br>
-      <button onclick="setStatus(${r.id}, 'В работе')">В работе</button>
-      <button onclick="setStatus(${r.id}, 'Выполнено')">Выполнено</button>
-      <button onclick="setStatus(${r.id}, 'Архив')">Архив</button>
-      ${r.status === "Архив" ? `<button onclick="deleteRequest(${r.id})">Удалить</button>` : ""}
-    </div>
-  `).join("");
+function formatDate(d){
+  return new Date(d).toLocaleString();
 }
 
-async function setStatus(id, status){
+function getColor(s){
+  return s==="В работе"?"#fff3cd":
+         s==="Выполнено"?"#d4edda":
+         s==="Архив"?"#eee":"#f0f0f0";
+}
+
+async function load(){
+  let res = await fetch("/api/requests/"+school_id);
+  let data = await res.json();
+
+  let f = statusFilter.value;
+
+  if(f!=="all") data = data.filter(x=>x.status===f);
+  else data = data.filter(x=>x.status!=="Архив");
+
+  list.innerHTML = data.map(r=>`
+  <div class="card" style="background:${getColor(r.status)}">
+    <b>${r.system_type}</b> - ${r.description}<br>
+    <small>${formatDate(r.created_at)}</small><br>
+    ${r.status}
+
+    <div id="c-${r.id}"></div>
+
+    <input id="i-${r.id}" placeholder="Комментарий">
+    <button onclick="addComment(${r.id})">+</button>
+
+    <br>
+    <button onclick="setStatus(${r.id},'В работе')">В работе</button>
+    <button onclick="setStatus(${r.id},'Выполнено')">Готово</button>
+    <button onclick="setStatus(${r.id},'Архив')">Архив</button>
+
+    ${r.status==="Архив"?`<button onclick="del(${r.id})">Удалить</button>`:""}
+  </div>
+  `).join("");
+
+  setTimeout(()=>data.forEach(r=>loadComments(r.id)),100);
+}
+
+async function setStatus(id,status){
   await fetch("/api/status/"+id,{
     method:"PUT",
     headers:{"Content-Type":"application/json"},
@@ -146,50 +133,42 @@ async function setStatus(id, status){
   load();
 }
 
-document.getElementById("form").onsubmit = async (e)=>{
+form.onsubmit=async e=>{
   e.preventDefault();
-  const formData = new FormData(e.target);
-  formData.append("school_id", school_id);
+  let fd=new FormData(form);
+  fd.append("school_id",school_id);
 
-  await fetch("/api/requests",{
+  await fetch("/api/requests",{method:"POST",body:fd});
+  form.reset();
+  load();
+}
+
+async function del(id){
+  await fetch("/api/requests/"+id,{method:"DELETE"});
+  load();
+}
+
+async function loadComments(id){
+  let res=await fetch("/api/comments/"+id);
+  let d=await res.json();
+
+  document.getElementById("c-"+id).innerHTML=
+    d.map(x=>`<div>${x.text}<br><small>${formatDate(x.created_at)}</small></div>`).join("");
+}
+
+async function addComment(id){
+  let input=document.getElementById("i-"+id);
+
+  if(!input.value) return;
+
+  await fetch("/api/comments",{
     method:"POST",
-    body:formData
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({request_id:id,text:input.value})
   });
 
-  e.target.reset();
-  load();
-}
-
-async function deleteRequest(id){
-  if (!confirm("Удалить заявку?")) return;
-
-  await fetch("/api/requests/" + id, {
-    method: "DELETE"
-  });
-
-  load();
-}
-
-function getColor(status){
-  switch(status){
-    case "Новая": return "#f0f0f0";
-    case "В работе": return "#fff3cd";
-    case "Выполнено": return "#d4edda";
-    case "Архив": return "#e0e0e0";
-    default: return "#ffffff";
-  }
-}
-
-function formatDate(dateString){
-  const date = new Date(dateString);
-
-  return date.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  input.value="";
+  loadComments(id);
 }
 
 load();
